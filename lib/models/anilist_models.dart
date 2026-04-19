@@ -12,7 +12,8 @@ class CoverImage {
   final String extraLarge;
   CoverImage({required this.large, required this.extraLarge});
   factory CoverImage.fromJson(Map<String, dynamic> json) => CoverImage(
-      large: json['large'] ?? '', extraLarge: json['extraLarge'] ?? '');
+      large: json['large']?.toString() ?? '',
+      extraLarge: json['extraLarge']?.toString() ?? '');
 }
 
 class Trailer {
@@ -45,7 +46,7 @@ class NextAiringEpisode {
 
 class AniListMedia {
   final int id;
-  final int? idMal; // ADDED MAL ID FOR ANISKIP!
+  final int? idMal;
   final String type;
   final Title title;
   final CoverImage coverImage;
@@ -91,39 +92,48 @@ class AniListMedia {
 
   factory AniListMedia.fromJson(Map<String, dynamic> json) {
     List<Person> charList = [];
-    if (json['characters']?['edges'] != null)
+    if (json['characters']?['edges'] != null) {
       charList = (json['characters']['edges'] as List)
           .map((e) => Person(
               name: e['node']['name']['full'] ?? '',
-              image: e['node']['image']['large'] ?? '',
+              image: e['node']['image']['large']?.toString() ?? '',
               role: e['role'] ?? ''))
           .toList();
+    }
+
     List<Person> staffList = [];
-    if (json['staff']?['edges'] != null)
+    if (json['staff']?['edges'] != null) {
       staffList = (json['staff']['edges'] as List)
           .map((e) => Person(
               name: e['node']['name']['full'] ?? '',
-              image: e['node']['image']['large'] ?? '',
+              image: e['node']['image']['large']?.toString() ?? '',
               role: e['role'] ?? ''))
           .toList();
+    }
+
     List<AniListMedia> recList = [];
-    if (json['recommendations']?['nodes'] != null)
+    if (json['recommendations']?['nodes'] != null) {
       recList = (json['recommendations']['nodes'] as List)
           .where((e) => e['mediaRecommendation'] != null)
           .map((e) => AniListMedia.fromJson(e['mediaRecommendation']))
           .toList();
+    }
 
     return AniListMedia(
       id: json['id'],
-      idMal: json['idMal'], // GRAB MAL ID
+      idMal: json['idMal'],
       type: json['type'] ?? 'ANIME',
       title: Title.fromJson(json['title'] ?? {}),
       coverImage: CoverImage.fromJson(json['coverImage'] ?? {}),
-      bannerImage: json['bannerImage'], averageScore: json['averageScore'],
+      bannerImage: json['bannerImage']?.toString(),
+      averageScore: json['averageScore'],
       description: json['description'] ?? 'No description available.',
-      status: json['status'] ?? 'UNKNOWN', format: json['format'] ?? '',
-      seasonYear: json['seasonYear'], episodes: json['episodes'],
-      chapters: json['chapters'], duration: json['duration'],
+      status: json['status'] ?? 'UNKNOWN',
+      format: json['format'] ?? '',
+      seasonYear: json['seasonYear'],
+      episodes: json['episodes'],
+      chapters: json['chapters'],
+      duration: json['duration'],
       genres:
           (json['genres'] as List?)?.map((e) => e.toString()).toList() ?? [],
       nextAiringEpisode: json['nextAiringEpisode'] != null

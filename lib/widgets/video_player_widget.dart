@@ -34,6 +34,7 @@ class _NativeVideoPlayerState extends State<NativeVideoPlayer> {
   String _seekIndicator = '';
   Timer? _seekTimer;
 
+  // Handles which skip button to show ('Intro' or 'Outro')
   String? _activeSkipType;
 
   @override
@@ -46,6 +47,7 @@ class _NativeVideoPlayerState extends State<NativeVideoPlayer> {
   @override
   void didUpdateWidget(NativeVideoPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Seamlessly swap video controllers when next episode is clicked
     if (oldWidget.streamData.m3u8 != widget.streamData.m3u8) {
       _controller.removeListener(_playerListener);
       _controller.dispose();
@@ -61,15 +63,8 @@ class _NativeVideoPlayerState extends State<NativeVideoPlayer> {
   }
 
   Future<void> _initializePlayer() async {
-    // FIX FOR SERVER-1 ON NATIVE BUILD: INJECTING BROWSER HEADERS
-    _controller = VideoPlayerController.networkUrl(
-        Uri.parse(widget.streamData.m3u8),
-        httpHeaders: {
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Referer': 'https://vidplay.online/',
-          'Origin': 'https://vidplay.online',
-        });
+    _controller =
+        VideoPlayerController.networkUrl(Uri.parse(widget.streamData.m3u8));
     await _controller.initialize();
     _controller.addListener(_playerListener);
     _controller.play();
@@ -79,25 +74,30 @@ class _NativeVideoPlayerState extends State<NativeVideoPlayer> {
 
   void _playerListener() {
     if (!mounted) return;
-    setState(() {}); // Updates slider
+    setState(() {}); // Updates Scrubber
 
+    // Check Intro / Outro Skip intelligently
     final pos = _controller.value.position.inSeconds;
     String? currentSkip;
 
-    // Detect Intro / Outro zones
     if (widget.streamData.introStart != null &&
         widget.streamData.introEnd != null) {
       if (pos >= widget.streamData.introStart! &&
-          pos < widget.streamData.introEnd!) currentSkip = 'Intro';
+          pos < widget.streamData.introEnd!) {
+        currentSkip = 'Intro';
+      }
     }
     if (widget.streamData.outroStart != null &&
         widget.streamData.outroEnd != null) {
       if (pos >= widget.streamData.outroStart! &&
-          pos < widget.streamData.outroEnd!) currentSkip = 'Outro';
+          pos < widget.streamData.outroEnd!) {
+        currentSkip = 'Outro';
+      }
     }
 
-    if (_activeSkipType != currentSkip)
+    if (_activeSkipType != currentSkip) {
       setState(() => _activeSkipType = currentSkip);
+    }
   }
 
   void _startHideTimer() {
@@ -116,6 +116,7 @@ class _NativeVideoPlayerState extends State<NativeVideoPlayer> {
   void _handleDoubleTap(TapDownDetails details) {
     final width = MediaQuery.of(context).size.width;
     final isLeft = details.globalPosition.dx < width / 2;
+
     final currentPos = _controller.value.position;
     final seekAmount = const Duration(seconds: 10);
 
@@ -155,11 +156,12 @@ class _NativeVideoPlayerState extends State<NativeVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_controller.value.isInitialized)
+    if (!_controller.value.isInitialized) {
       return const Scaffold(
           backgroundColor: Colors.black,
           body: Center(
               child: CircularProgressIndicator(color: Colors.indigoAccent)));
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -172,11 +174,14 @@ class _NativeVideoPlayerState extends State<NativeVideoPlayer> {
               child: VideoPlayer(_controller),
             ),
           ),
+
           GestureDetector(
-              onTap: _toggleControls,
-              onDoubleTapDown: _handleDoubleTap,
-              behavior: HitTestBehavior.opaque,
-              child: Container(color: Colors.transparent)),
+            onTap: _toggleControls,
+            onDoubleTapDown: _handleDoubleTap,
+            behavior: HitTestBehavior.opaque,
+            child: Container(color: Colors.transparent),
+          ),
+
           if (_seekIndicator.isNotEmpty)
             Center(
               child: Row(
@@ -193,6 +198,7 @@ class _NativeVideoPlayerState extends State<NativeVideoPlayer> {
                 ],
               ),
             ),
+
           AnimatedOpacity(
             opacity: _showControls ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 300),
@@ -200,21 +206,18 @@ class _NativeVideoPlayerState extends State<NativeVideoPlayer> {
               ignoring: !_showControls,
               child: Container(
                 decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
                       Colors.black87,
                       Colors.transparent,
                       Colors.transparent,
                       Colors.black87
                     ],
-                        stops: const [
-                      0.0,
-                      0.2,
-                      0.8,
-                      1.0
-                    ])),
+                    stops: const [0.0, 0.2, 0.8, 1.0],
+                  ),
+                ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -323,6 +326,8 @@ class _NativeVideoPlayerState extends State<NativeVideoPlayer> {
               ),
             ),
           ),
+
+          // SKIP BUTTON (INTRO OR OUTRO)
           if (_activeSkipType != null)
             Positioned(
               bottom: 80,
@@ -358,12 +363,15 @@ class _NativeVideoPlayerState extends State<NativeVideoPlayer> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
           color: Colors.black54, borderRadius: BorderRadius.circular(50)),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, color: Colors.white, size: 40),
-        Text(text,
-            style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.bold))
-      ]),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 40),
+          Text(text,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 }

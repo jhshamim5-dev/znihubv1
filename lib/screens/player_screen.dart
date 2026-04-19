@@ -32,8 +32,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   CustomEpisode? _activeEpisode;
   num? _activeMangaChapter;
 
-  String? _currentServerName;
-  String? _currentServerType;
+  // NEW: Save sever choices to play seamlessly!
+  String? _currentServerName; // e.g: 'vidplay'
+  String? _currentServerType; // e.g: 'sub' or 'dub'
 
   List<String> _gallery = [];
   int _galleryIndex = 0;
@@ -77,14 +78,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return n == n.toInt() ? n.toInt().toString() : n.toString();
   }
 
+  // --- SEAMLESS NEXT EPISODE ENGINE ---
   Future<void> _playEpisodeSeamlessly(CustomEpisode ep) async {
+    // If we haven't picked a server yet, fallback to modal natively
     if (_currentServerName == null || _currentServerType == null) {
       _openServerModal(ep);
       return;
     }
 
+    // Auto-fallback: If user was watching Dub, but next ep doesn't have a Dub yet, load Sub
     String typeToFetch = _currentServerType!;
-    if (typeToFetch == 'dub' && !ep.isDub) typeToFetch = 'sub';
+    if (typeToFetch == 'dub' && !ep.isDub) {
+      typeToFetch = 'sub';
+    }
 
     showDialog(
         context: context,
@@ -97,33 +103,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
           widget.media.id, ep.number.toInt(), _currentServerName!, typeToFetch);
       Provider.of<LibraryProvider>(context, listen: false)
           .updateHistory(widget.media, ep.number.toInt());
-
-      // INJECT ANISKIP PERFECT TIMING!
-      if (widget.media.idMal != null) {
-        final skips = await CustomApiService.fetchAniSkip(
-            widget.media.idMal!, ep.number.toInt());
-        if (skips.containsKey('Intro')) {
-          stream.introStart = skips['Intro']!['start'];
-          stream.introEnd = skips['Intro']!['end'];
-        }
-        if (skips.containsKey('Outro')) {
-          stream.outroStart = skips['Outro']!['start'];
-          stream.outroEnd = skips['Outro']!['end'];
-        }
-      }
-
       Navigator.pop(context); // Close loading overlay
+
       setState(() {
         _activeEpisode = ep;
         _activeStreamData = stream;
-        _currentServerType = typeToFetch;
+        _currentServerType = typeToFetch; // Saves fallback memory
       });
     } catch (e) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text(
               'Seamless auto-play failed. Try selecting server manually.')));
-      _openServerModal(ep);
+      _openServerModal(ep); // Open Modal if smart play fails
     }
   }
 
@@ -194,25 +186,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
               widget.media.id, ep.number.toInt(), server, endpointType);
           Provider.of<LibraryProvider>(context, listen: false)
               .updateHistory(widget.media, ep.number.toInt());
-
-          // INJECT ANISKIP PERFECT TIMING!
-          if (widget.media.idMal != null) {
-            final skips = await CustomApiService.fetchAniSkip(
-                widget.media.idMal!, ep.number.toInt());
-            if (skips.containsKey('Intro')) {
-              stream.introStart = skips['Intro']!['start'];
-              stream.introEnd = skips['Intro']!['end'];
-            }
-            if (skips.containsKey('Outro')) {
-              stream.outroStart = skips['Outro']!['start'];
-              stream.outroEnd = skips['Outro']!['end'];
-            }
-          }
-
           Navigator.pop(context);
           setState(() {
-            _currentServerName = server;
-            _currentServerType = endpointType;
+            _currentServerName = server; // <--- Save User's Server Pick
+            _currentServerType = endpointType; // <--- Save User's Sub/Dub Pick
             _activeEpisode = ep;
             _activeStreamData = stream;
           });
@@ -266,10 +243,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
           _activeEpisode = null;
         }),
         onChangeServer: () => _openServerModal(_activeEpisode!),
-        onNext:
-            hasNext ? () => _playEpisodeSeamlessly(_episodes[index + 1]) : null,
-        onPrev:
-            hasPrev ? () => _playEpisodeSeamlessly(_episodes[index - 1]) : null,
+        onNext: hasNext
+            ? () => _playEpisodeSeamlessly(_episodes[index + 1])
+            : null, // Uses the smart seamless player now!
+        onPrev: hasPrev
+            ? () => _playEpisodeSeamlessly(_episodes[index - 1])
+            : null, // Uses the smart seamless player now!
       );
     }
 
