@@ -23,36 +23,26 @@ class CustomEpisode {
 class CustomStream {
   final String ep;
   final String m3u8;
-  final int? introStart;
-  final int? introEnd;
+  // Removed 'final' so we can overwrite these with accurate AniSkip data later!
+  int? introStart;
+  int? introEnd;
+  int? outroStart;
+  int? outroEnd;
 
   CustomStream(
-      {required this.ep, required this.m3u8, this.introStart, this.introEnd});
+      {required this.ep,
+      required this.m3u8,
+      this.introStart,
+      this.introEnd,
+      this.outroStart,
+      this.outroEnd});
 
   factory CustomStream.fromJson(Map<String, dynamic> json) {
-    int? iStart;
-    int? iEnd;
-
-    // Parse Intro Timeskits (different scrapers use different keys)
-    final introRaw = json['intro'] ??
-        (json['timeskip'] != null ? json['timeskip']['intro'] : null);
-    if (introRaw != null) {
-      if (introRaw is List && introRaw.length == 2) {
-        iStart = int.tryParse(introRaw[0].toString());
-        iEnd = int.tryParse(introRaw[1].toString());
-      } else if (introRaw is Map) {
-        iStart = int.tryParse(introRaw['start'].toString());
-        iEnd = int.tryParse(introRaw['end'].toString());
-      }
-    }
-
     return CustomStream(
       ep: json['ep'] ?? '1',
       m3u8: json['stream'] != null
           ? (json['stream']['m3u8'] ?? '')
           : (json['m3u8'] ?? ''),
-      introStart: iStart,
-      introEnd: iEnd,
     );
   }
 }
@@ -63,11 +53,8 @@ class CustomChapter {
   final String id;
 
   CustomChapter({required this.title, required this.number, required this.id});
-  factory CustomChapter.fromJson(Map<String, dynamic> json) {
-    return CustomChapter(
+  factory CustomChapter.fromJson(Map<String, dynamic> json) => CustomChapter(
       title: json['title'] ?? '',
       number: num.tryParse(json['number'].toString()) ?? 0,
-      id: json['id'] ?? '',
-    );
-  }
+      id: json['id'] ?? '');
 }

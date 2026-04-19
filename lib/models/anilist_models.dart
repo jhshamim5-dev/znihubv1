@@ -45,6 +45,7 @@ class NextAiringEpisode {
 
 class AniListMedia {
   final int id;
+  final int? idMal; // ADDED MAL ID FOR ANISKIP!
   final String type;
   final Title title;
   final CoverImage coverImage;
@@ -55,7 +56,7 @@ class AniListMedia {
   final String format;
   final int? seasonYear;
   final int? episodes;
-  final int? chapters; // FIX: Added chapters back
+  final int? chapters;
   final int? duration;
   final List<String> genres;
   final NextAiringEpisode? nextAiringEpisode;
@@ -67,6 +68,7 @@ class AniListMedia {
 
   AniListMedia(
       {required this.id,
+      this.idMal,
       required this.type,
       required this.title,
       required this.coverImage,
@@ -79,7 +81,7 @@ class AniListMedia {
       this.episodes,
       this.chapters,
       this.duration,
-      this.genres = const [], // FIX: Constructor mapped
+      this.genres = const [],
       this.nextAiringEpisode,
       this.characters = const [],
       this.staff = const [],
@@ -89,52 +91,49 @@ class AniListMedia {
 
   factory AniListMedia.fromJson(Map<String, dynamic> json) {
     List<Person> charList = [];
-    if (json['characters']?['edges'] != null) {
+    if (json['characters']?['edges'] != null)
       charList = (json['characters']['edges'] as List)
           .map((e) => Person(
               name: e['node']['name']['full'] ?? '',
               image: e['node']['image']['large'] ?? '',
               role: e['role'] ?? ''))
           .toList();
-    }
     List<Person> staffList = [];
-    if (json['staff']?['edges'] != null) {
+    if (json['staff']?['edges'] != null)
       staffList = (json['staff']['edges'] as List)
           .map((e) => Person(
               name: e['node']['name']['full'] ?? '',
               image: e['node']['image']['large'] ?? '',
               role: e['role'] ?? ''))
           .toList();
-    }
     List<AniListMedia> recList = [];
-    if (json['recommendations']?['nodes'] != null) {
+    if (json['recommendations']?['nodes'] != null)
       recList = (json['recommendations']['nodes'] as List)
           .where((e) => e['mediaRecommendation'] != null)
           .map((e) => AniListMedia.fromJson(e['mediaRecommendation']))
           .toList();
-    }
-    String mainStudio = json['studios']?['edges']?.isNotEmpty == true
-        ? json['studios']['edges'][0]['node']['name']
-        : '';
 
     return AniListMedia(
-      id: json['id'], type: json['type'] ?? 'ANIME',
+      id: json['id'],
+      idMal: json['idMal'], // GRAB MAL ID
+      type: json['type'] ?? 'ANIME',
       title: Title.fromJson(json['title'] ?? {}),
       coverImage: CoverImage.fromJson(json['coverImage'] ?? {}),
-      bannerImage: json['bannerImage'],
-      averageScore: json['averageScore'],
+      bannerImage: json['bannerImage'], averageScore: json['averageScore'],
       description: json['description'] ?? 'No description available.',
       status: json['status'] ?? 'UNKNOWN', format: json['format'] ?? '',
-      seasonYear: json['seasonYear'],
-      episodes: json['episodes'],
-      chapters: json['chapters'], // FIX: Json mapping added
-      duration: json['duration'],
+      seasonYear: json['seasonYear'], episodes: json['episodes'],
+      chapters: json['chapters'], duration: json['duration'],
       genres:
           (json['genres'] as List?)?.map((e) => e.toString()).toList() ?? [],
       nextAiringEpisode: json['nextAiringEpisode'] != null
           ? NextAiringEpisode.fromJson(json['nextAiringEpisode'])
           : null,
-      characters: charList, staff: staffList, studio: mainStudio,
+      characters: charList,
+      staff: staffList,
+      studio: json['studios']?['edges']?.isNotEmpty == true
+          ? json['studios']['edges'][0]['node']['name']
+          : '',
       trailer:
           json['trailer'] != null ? Trailer.fromJson(json['trailer']) : null,
       recommendations: recList,
